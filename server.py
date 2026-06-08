@@ -118,7 +118,7 @@ async def validate(body: ValidateRequest, request: Request):
         return ValidateResponse(valid=False, sig=sig)
 
     if resp.status_code != 200:
-        raise HTTPException(502, "Upstream error.")
+        raise HTTPException(502, f"Upstream error: {resp.status_code} {resp.text[:300]}")
 
     membership = resp.json()
     status = membership.get("status", "")
