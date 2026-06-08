@@ -103,12 +103,11 @@ async def validate(body: ValidateRequest, request: Request):
     if len(body.key) < 8 or len(body.key) > 200:
         return ValidateResponse(valid=False, sig=_sign_response(False, None, ""))
 
-    # 5. Ask Whop — search by license key
+    # 5. Ask Whop — retrieve membership by license key (v2 accepts license key as the ID)
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(
-                "https://api.whop.com/v2/memberships",
-                params={"license_key": body.key},
+                f"https://api.whop.com/api/v2/memberships/{body.key}",
                 headers={"Authorization": f"Bearer {WHOP_API_KEY}"},
             )
     except Exception:
@@ -121,15 +120,7 @@ async def validate(body: ValidateRequest, request: Request):
     if resp.status_code != 200:
         raise HTTPException(502, "Upstream error.")
 
-    data = resp.json()
-
-    # v2 returns a paginated list — grab first result
-    items = data.get("data", [])
-    if not items:
-        sig = _sign_response(False, None, "")
-        return ValidateResponse(valid=False, sig=sig)
-
-    membership = items[0]
+    membership = resp.json()
     status = membership.get("status", "")
     valid = status in _ACTIVE_STATUSES
 
